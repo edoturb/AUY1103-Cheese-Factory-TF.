@@ -115,5 +115,72 @@ resource "aws_instance" "web_servers" {
               EOF
 }
 
-# El Load Balancer se configuraría aquí, apuntando a las instancias EC2
-# (Omitido para mantener el foco en los requisitos principales, pero debe ser el paso siguiente)
+# Application Load Balancer para acceso web público
+resource "aws_lb" "cheese_factory_alb" {
+  name               = "cheese-factory-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = module.vpc.public_subnets
+
+  enable_deletion_protection = false
+
+  tags = merge(local.project_tags, {
+    Name = "CheeseFactory-${upper(var.environment)}-ALB"
+  })
+}
+
+# Target Group para las instancias EC2
+resource "aws_lb_target_group" "web_servers" {
+  name     = "cheese-factory-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = module.vpc.vpc_id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = merge(local.project_tags, {
+    Name = "CheeseFactory-${upper(var.environment)}-TG"
+  })
+}
+
+# Asociar las instancias EC2 al Target Group
+resource "aws_lb_target_group_attachment" "web_servers" {
+  count            = 3
+  target_group_arn = aws_lb_target_group.web_servers.arn
+  target_id        = aws_instance.web_servers[count.index].id
+  port             = 80
+}
+
+# Listener del ALB para HTTP
+resource "aws_lb_listener" "web_servers" {
+  load_balancer_arn = aws_lb.cheese_factory_alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web_servers.arn
+  }
+}
+
+# Output para mostrar la URL del ALB
+output "alb_dns_name" {
+  description = "DNS name del Application Load Balancer"
+  value       = aws_lb.cheese_factory_alb.dns_name
+}
+
+output "alb_url" {
+  description = "URL completa para acceder a la aplicación web"
+  value       = "http://${aws_lb.cheese_factory_alb.dns_name}"
+}

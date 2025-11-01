@@ -1,0 +1,14 @@
+# Archivo: cheese-factory/terraform.tfvars.example
+# Este es un archivo de ejemplo. DEBE ser copiado a 'terraform.tfvars' antes de la ejecución.
+
+# Requisito: Variable environment
+# Usada para aplicar lógica condicional (t2.micro en dev, t3.small en prod)
+environment    = "dev" 
+
+# Requisito: Tu IP pública para SSH
+# ¡IMPORTANTE! Reemplaza esto con tu IP pública real, usando la máscara /32 (ej: 192.0.2.1/32)
+my_public_ip   = "203.0.113.45/32" 
+
+# Otras variables de configuración
+region         = "us-east-1"
+vpc_cidr       = "10.0.0.0/16"
